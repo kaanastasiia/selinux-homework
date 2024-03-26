@@ -1,0 +1,172 @@
+[root@oraclelinuxlab ~]# sestatus 
+SELinux status:                 enabled
+SELinuxfs mount:                /sys/fs/selinux
+SELinux root directory:         /etc/selinux
+Loaded policy name:             targeted
+Current mode:                   enforcing
+Mode from config file:          enforcing
+Policy MLS status:              enabled
+Policy deny_unknown status:     allowed
+Memory protection checking:     actual (secure)
+Max kernel policy version:      33
+
+[root@oraclelinuxlab ~]# vim /etc/nginx/nginx.conf
+[root@oraclelinuxlab ~]# cat /etc/nginx/nginx.conf | grep listen
+        listen       8081;
+        listen       [::]:8081;
+[root@oraclelinuxlab ~]# nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+[root@oraclelinuxlab ~]# systemctl start nginx.service 
+Job for nginx.service failed because the control process exited with error code.
+See "systemctl status nginx.service" and "journalctl -xeu nginx.service" for details.
+
+[root@oraclelinuxlab ~]# firewall-cmd --permanent --add-port=8081/tcp
+success
+[root@oraclelinuxlab ~]# firewall-cmd --reload
+success
+[root@oraclelinuxlab ~]# firewall-cmd --list-ports 
+111/tcp 662/tcp 892/tcp 2049/tcp 8081/tcp 32803/tcp 111/udp 662/udp 892/udp 2049/udp 32803/udp
+
+[root@oraclelinuxlab ~]# sealert -a /var/log/audit/audit.log 
+If you believe that nginx should be allowed name_bind access on the port 8081 tcp_socket by default.
+Then you should report this as a bug.
+You can generate a local policy module to allow this access.
+Do
+allow this access for now by executing:
+# ausearch -c 'nginx' --raw | audit2allow -M my-nginx
+# semodule -X 300 -i my-nginx.pp
+
+
+Additional Information:
+Source Context                system_u:system_r:httpd_t:s0
+Target Context                system_u:object_r:transproxy_port_t:s0
+Target Objects                port 8081 [ tcp_socket ]
+Source                        nginx
+Source Path                   /usr/sbin/nginx
+Port                          8081
+Host                          <Unknown>
+Source RPM Packages           nginx-core-1.20.1-14.0.1.el9_2.1.x86_64
+Target RPM Packages           
+SELinux Policy RPM            selinux-policy-targeted-38.1.23-1.0.2.el9.noarch
+Local Policy RPM              selinux-policy-targeted-38.1.23-1.0.2.el9.noarch
+Selinux Enabled               True
+Policy Type                   targeted
+Enforcing Mode                Enforcing
+
+[root@oraclelinuxlab ~]# setsebool -P nis_enabled on
+[root@oraclelinuxlab ~]# getsebool -a | grep nis_enabled
+nis_enabled --> on
+
+[root@oraclelinuxlab ~]# systemctl start nginx
+Job for nginx.service failed because the control process exited with error code.
+See "systemctl status nginx.service" and "journalctl -xeu nginx.service" for details.
+[root@oraclelinuxlab ~]# systemctl stop firewalld.service 
+[root@oraclelinuxlab ~]# systemctl start nginx
+Job for nginx.service failed because the control process exited with error code.
+See "systemctl status nginx.service" and "journalctl -xeu nginx.service" for details.
+[root@oraclelinuxlab ~]# systemctl status nginx
+× nginx.service - The nginx HTTP and reverse proxy server
+     Loaded: loaded (/usr/lib/systemd/system/nginx.service; disabled; p>
+    Drop-In: /usr/lib/systemd/system/nginx.service.d
+             └─php-fpm.conf
+     Active: failed (Result: exit-code) since Tue 2024-03-26 17:09:15 M>
+    Process: 35036 ExecStartPre=/usr/bin/rm -f /run/nginx.pid (code=exi>
+    Process: 35037 ExecStartPre=/usr/sbin/nginx -t (code=exited, status>
+        CPU: 34ms
+
+Mar 26 17:09:15 oraclelinuxlab systemd[1]: Starting The nginx HTTP and >
+Mar 26 17:09:15 oraclelinuxlab nginx[35037]: nginx: the configuration f>
+Mar 26 17:09:15 oraclelinuxlab nginx[35037]: nginx: [emerg] bind() to 0>
+Mar 26 17:09:15 oraclelinuxlab nginx[35037]: nginx: configuration file >
+Mar 26 17:09:15 oraclelinuxlab systemd[1]: nginx.service: Control proce>
+Mar 26 17:09:15 oraclelinuxlab systemd[1]: nginx.service: Failed with r>
+Mar 26 17:09:15 oraclelinuxlab systemd[1]: Failed to start The nginx HT>
+[root@oraclelinuxlab ~]# systemctl start firewalld.service 
+[root@oraclelinuxlab ~]# setsebool -P nis_enabled off
+
+[root@oraclelinuxlab ~]# semanage port -l | grep http
+http_cache_port_t              tcp      8080, 8118, 8123, 10001-10010
+http_cache_port_t              udp      3130
+http_port_t                    tcp      80, 81, 443, 488, 8008, 8009, 8443, 9000
+pegasus_http_port_t            tcp      5988
+pegasus_https_port_t           tcp      5989
+[root@oraclelinuxlab ~]# semanage port -a -t http_port_t -p tcp 8081
+ValueError: Port tcp/8081 already defined
+[root@oraclelinuxlab ~]# semanage port -l | grep 8081
+transproxy_port_t              tcp      8081
+
+[root@oraclelinuxlab ~]# vim /etc/nginx/nginx.conf
+[root@oraclelinuxlab ~]# semanage port -l | grep 8001
+jboss_management_port_t        tcp      4447, 4712, 7600, 9123, 9990, 9999, 18001
+[root@oraclelinuxlab ~]# vim /etc/nginx/nginx.conf
+[root@oraclelinuxlab ~]# cat /etc/nginx/nginx.conf | grep listen
+        listen       8001;
+        listen       [::]:8001;
+[root@oraclelinuxlab ~]# semanage port -l | grep 8001
+jboss_management_port_t        tcp      4447, 4712, 7600, 9123, 9990, 9999, 18001
+[root@oraclelinuxlab ~]# nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+[root@oraclelinuxlab ~]# setsebool -P nis_enabled on
+[root@oraclelinuxlab ~]# getsebool -a | grep nis_enabled
+nis_enabled --> on
+[root@oraclelinuxlab ~]# systemctl restart nginx
+[root@oraclelinuxlab ~]# systemctl status nginx
+● nginx.service - The nginx HTTP and reverse proxy server
+     Loaded: loaded (/usr/lib/systemd/system/nginx.service; disabled; p>
+    Drop-In: /usr/lib/systemd/system/nginx.service.d
+             └─php-fpm.conf
+     Active: active (running) since Tue 2024-03-26 17:27:38 MSK; 6s ago
+[root@oraclelinuxlab ~]# setsebool -P nis_enabled off
+[root@oraclelinuxlab ~]# getsebool -a | grep nis_enabled
+nis_enabled --> off
+[root@oraclelinuxlab ~]# systemctl restart nginx
+Job for nginx.service failed because the control process exited with error code.
+See "systemctl status nginx.service" and "journalctl -xeu nginx.service" for details.
+
+[root@oraclelinuxlab ~]# semanage port -a -t http_port_t -p tcp 8001
+[root@oraclelinuxlab ~]# semanage port -l | grep 8001
+http_port_t                    tcp      8001, 80, 81, 443, 488, 8008, 8009, 8443, 9000
+jboss_management_port_t        tcp      4447, 4712, 7600, 9123, 9990, 9999, 18001
+[root@oraclelinuxlab ~]# systemctl restart nginx
+[root@oraclelinuxlab ~]# systemctl status nginx
+● nginx.service - The nginx HTTP and reverse proxy server
+     Loaded: loaded (/usr/lib/systemd/system/nginx.service; disabled; p>
+    Drop-In: /usr/lib/systemd/system/nginx.service.d
+             └─php-fpm.conf
+     Active: active (running) since Tue 2024-03-26 17:30:23 MSK; 3s ago
+[root@oraclelinuxlab ~]# semanage port -d -t http_port_t -p tcp 8001
+[root@oraclelinuxlab ~]# semanage port -l | grep 8001
+jboss_management_port_t        tcp      4447, 4712, 7600, 9123, 9990, 9999, 18001
+[root@oraclelinuxlab ~]# systemctl restart nginx
+Job for nginx.service failed because the control process exited with error code.
+See "systemctl status nginx.service" and "journalctl -xeu nginx.service" for details.
+
+[root@oraclelinuxlab ~]# ausearch -c 'nginx' --raw | audit2allow -M my-nginx
+******************** IMPORTANT ***********************
+To make this policy package active, execute:
+
+semodule -i my-nginx.pp
+
+[root@oraclelinuxlab ~]# semodule -i my-nginx.pp
+^[[D[root@oraclelinuxlab ~]# 
+[root@oraclelinuxlab ~]# systemctl restart nginx
+[root@oraclelinuxlab ~]# systemctl status nginx
+● nginx.service - The nginx HTTP and reverse proxy server
+     Loaded: loaded (/usr/lib/systemd/system/nginx.service; disabled; p>
+    Drop-In: /usr/lib/systemd/system/nginx.service.d
+             └─php-fpm.conf
+     Active: active (running) since Tue 2024-03-26 17:34:08 MSK; 5s ago
+
+[root@oraclelinuxlab ~]# semodule -l | grep nginx
+my-nginx
+[root@oraclelinuxlab ~]# semodule -r my-nginx
+libsemanage.semanage_direct_remove_key: Removing last my-nginx module (no other my-nginx module exists at another priority).
+[root@oraclelinuxlab ~]# semodule -l | grep nginx
+[root@oraclelinuxlab ~]# systemctl restart nginx
+Job for nginx.service failed because the control process exited with error code.
+See "systemctl status nginx.service" and "journalctl -xeu nginx.service" for details.
+
+
